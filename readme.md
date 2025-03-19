@@ -1,144 +1,352 @@
-# Proxy
+# Padrão Proxy
 
 ## Intenção
-Fornecer um substituto ou intermediário para controlar o acesso a um objeto. O Proxy atua como um representante do objeto real, permitindo adicionar lógica adicional antes ou depois das chamadas ao objeto original, como controle de acesso, carregamento sob demanda ou cache.
+O padrão Proxy fornece um substituto ou representante de um objeto para controlar o acesso a ele. O Proxy atua como um intermediário entre o cliente e o objeto real, permitindo que o cliente interaja com o objeto sem precisar conhecer sua implementação interna.
 
 ## Também conhecido como
 Surrogate
 
 ## Motivação
-Imagine que um sistema de armazenamento em nuvem precisa fornecer acesso a arquivos grandes. Se cada solicitação acessasse diretamente os arquivos na nuvem, poderia haver um alto custo em desempenho e tempo de resposta. Para otimizar esse acesso, podemos usar o padrão Proxy para carregar os arquivos sob demanda e armazená-los temporariamente.
+Em sistemas que gerenciam dados sensíveis, como informações de saúde, o acesso deve ser controlado para garantir a privacidade. O padrão Proxy atua como intermediário, verificando permissões antes de permitir o acesso aos dados. Além disso, ele pode implementar caching para otimizar o desempenho, garantindo que apenas usuários autorizados acessem informações críticas.
 
-Sem o Proxy, cada vez que um cliente solicita um arquivo, a operação pode ser cara e demorada. O Proxy pode intermediar essas solicitações, verificando permissões, armazenando arquivos acessados recentemente e otimizando chamadas.
+## Exemplo Aplicado
+```mermaid
+classDiagram
+    class SistemaSaude {
+        +visualizarDados(paciente: String)
+        +editarDados(paciente: String, novosDados: String)
+    }
 
-## Solução com Proxy:
-O padrão Proxy resolve o problema ao intermediar o acesso ao objeto real, permitindo controle sobre sua criação, acesso e manipulação. Assim:
+    class SistemaSaudeReal {
+        +visualizarDados(paciente: String)
+        +editarDados(paciente: String, novosDados: String)
+    }
 
-- Podemos adiar a criação do objeto real até que seja realmente necessário.
-- Podemos adicionar um cache ou verificação de permissões antes de permitir o acesso ao objeto real.
-- Podemos limitar o acesso ao objeto real baseado em regras de negócio.
+    class ProxySistemaSaude {
+        -sistemaReal: SistemaSaudeReal
+        -usuario: String
+        +visualizarDados(paciente: String)
+        +editarDados(paciente: String, novosDados: String)
+        -temPermissao(): boolean
+    }
 
-## Use o padrão Proxy quando:
+    SistemaSaude <|.. SistemaSaudeReal
+    SistemaSaude <|.. ProxySistemaSaude
+```
 
-- Desejar controlar o acesso a um objeto real, por exemplo, restringindo, monitorando ou adiando sua inicialização.
-- Precisar adicionar funcionalidades como logging, caching ou autenticação antes de permitir a interação com o objeto real.
-- O acesso ao objeto real for muito dispendioso em termos de recursos e desempenho.
-
-## Estrutura
-![alt text](image.png)
+## Estrutura GOF
+![image](https://github.com/user-attachments/assets/778e1992-85ca-4506-a5ee-cb1df4c2cb6b)
 
 ## Participantes:
-- Subject (Arquivo): Define a interface comum para RealSubject e Proxy.
-- RealSubject (ArquivoReal): Implementa o comportamento real.
-- Proxy (ProxyArquivo): Controla o acesso a RealSubject, podendo armazenar referências e gerenciar chamadas.
+### Subject (SistemaSaude)
+- Define a interface comum para `RealSubject` (SistemaSaudeReal) e `Proxy` (ProxySistemaSaude).
+- Permite que o Proxy seja usado no lugar do RealSubject.
+### RealSubject (SistemaSaudeReal)
+- Implementa a lógica real de acesso e manipulação dos dados de saúde.
+- Só é criado quando necessário (Lazy Loading).
+### Proxy (ProxySistemaSaude)
+- Controla o acesso ao `RealSubject`.
+- Verifica permissões antes de permitir o acesso.
+- Adia a criação do `RealSubject` até que seja realmente necessário.
+### Cliente (ExemploProxySaude)    
+- Interage com o Proxy sem saber da existência do `RealSubject`.
+- Testa o comportamento do Proxy com diferentes usuários.
 
-## Colaborações:
-- O Proxy gerencia o acesso ao RealSubject, podendo delegar chamadas ou adicionar funcionalidade extra.
-
-## Consequências:
-- Controle sobre a criação do objeto: O objeto real só é instanciado quando necessário.
-- Melhoria no desempenho: Pode reduzir chamadas a recursos dispendiosos (ex: carregamento de arquivos remotos).
-- Segurança e acesso controlado: Pode restringir acesso com autenticação e permissões.
-
-## Implementação:
-
-- Proxy Virtual: Utilizado para adiar a criação do objeto real.
-- Proxy Remoto: Representa um objeto em outra localização, como um serviço remoto.
-- Proxy de Proteção: Controla acesso baseado em permissões.
-- Proxy Cache: Armazena dados para evitar recomputações desnecessárias.
-
-## Exemplo:
-
-Classe Arquivo - Subject:
+## Exemplo do Código
 ```java
-package proxy;
-
-public interface Arquivo {
-    void carregar();
-    void exibir();
+interface SistemaSaude {
+    void visualizarDados(String paciente);
+    void editarDados(String paciente, String novosDados);
 }
-```
 
-Classe ArquivoReal - RealSubject:
-```java
-package proxy;
-
-public class ArquivoReal implements Arquivo {
-    private String nome;
-
-    public ArquivoReal(String nome) {
-        this.nome = nome;
-        carregar();
+class SistemaSaudeReal implements SistemaSaude {
+    @Override
+    public void visualizarDados(String paciente) {
+        System.out.println("Visualizando dados do paciente: " + paciente);
     }
 
     @Override
-    public void carregar() {
-        System.out.println("Carregando arquivo: " + nome);
-    }
-
-    @Override
-    public void exibir() {
-        System.out.println("Exibindo arquivo: " + nome);
+    public void editarDados(String paciente, String novosDados) {
+        System.out.println("Editando dados do paciente: " + paciente + " com novos dados: " + novosDados);
     }
 }
-```
 
-Classe ProxyArquivo - Proxy:
-```java
-package proxy;
+class ProxySistemaSaude implements SistemaSaude {
+    private SistemaSaudeReal sistemaReal;
+    private String usuario;
 
-public class ProxyArquivo implements Arquivo {
-    private ArquivoReal arquivoReal;
-    private String nome;
-
-    public ProxyArquivo(String nome) {
-        this.nome = nome;
+    public ProxySistemaSaude(String usuario) {
+        this.usuario = usuario;
+        this.sistemaReal = new SistemaSaudeReal();
     }
 
     @Override
-    public void carregar() {
-        if (arquivoReal == null) {
-            arquivoReal = new ArquivoReal(nome);
+    public void visualizarDados(String paciente) {
+        if (temPermissao()) {
+            sistemaReal.visualizarDados(paciente);
+        } else {
+            System.out.println("Acesso negado. Você não tem permissão para visualizar os dados do paciente.");
         }
     }
 
     @Override
-    public void exibir() {
-        carregar();
-        arquivoReal.exibir();
+    public void editarDados(String paciente, String novosDados) {
+        if (temPermissao()) {
+            sistemaReal.editarDados(paciente, novosDados);
+        } else {
+            System.out.println("Acesso negado. Você não tem permissão para editar os dados do paciente.");
+        }
+    }
+
+    private boolean temPermissao() {
+        return "MEDICO".equals(usuario) || "ENFERMEIRO".equals(usuario);
     }
 }
-```
 
-Classe Main - Cliente:
-```java
-package proxy;
-
-public class Main {
+public class ExemploProxySaude {
     public static void main(String[] args) {
-        Arquivo arquivo = new ProxyArquivo("documento.pdf");
-        arquivo.exibir(); // Carrega e exibe
-        System.out.println("---");
-        arquivo.exibir(); // Apenas exibe, sem carregar novamente
+        SistemaSaude sistemaMedico = new ProxySistemaSaude("MEDICO");
+        SistemaSaude sistemaEnfermeiro = new ProxySistemaSaude("ENFERMEIRO");
+        SistemaSaude sistemaUsuarioComum = new ProxySistemaSaude("USUARIO");
+
+        sistemaMedico.visualizarDados("Pedro Silva");
+
+        sistemaEnfermeiro.editarDados("Pedro Silva", "Alergia a dipirona");
+
+        sistemaUsuarioComum.visualizarDados("Pedro Silva");
+
+        sistemaUsuarioComum.editarDados("Pedro Silva", "Novo endereço: Rua 123");
+    }
+}
+```
+## Implementação:
+1. **Definir a Interface do Sistema de Saúde:** Crie a interface que declara as operações essenciais para visualizar e editar dados de pacientes.
+2. **Implementar a Classe Real:** Utilize a classe SistemaSaudeReal para fornecer as implementações concretas das operações de visualização e edição de dados.
+3. **Criar o Proxy:** Desenvolva a classe ProxySistemaSaude que controla o acesso ao SistemaSaudeReal, verificando as permissões do usuário antes de permitir operações.
+4. **Construir o Cliente:** No método main da classe ExemploProxySaude, crie instâncias do proxy para diferentes tipos de usuários e teste as operações de visualização e edição de dados.
+
+## Aplicabilidade
+O padrão Proxy é aplicável em várias situações, incluindo:
+
+## 1. Proxy Remoto
+Este tipo de Proxy é utilizado quando um objeto está em um espaço de endereçamento diferente, como um servidor remoto. Ele atua como um intermediário, permitindo que o cliente interaja com o objeto como se estivesse localmente.
+### Código
+```java
+interface ServicoRemoto {
+    String obterDados();
+}
+
+class ServicoRemotoReal implements ServicoRemoto {
+    @Override
+    public String obterDados() {
+        return "Dados do serviço remoto.";
+    }
+}
+
+class ProxyRemoto implements ServicoRemoto {
+    private ServicoRemotoReal servicoReal;
+
+    @Override
+    public String obterDados() {
+        if (servicoReal == null) {
+            servicoReal = new ServicoRemotoReal();
+        }
+        return servicoReal.obterDados();
+    }
+}
+
+public class ExemploProxyRemoto {
+    public static void main(String[] args) {
+        ServicoRemoto servico = new ProxyRemoto();
+        System.out.println(servico.obterDados());
+    }
+}
+
+```
+## 2. Proxy Virtual
+Este Proxy é usado para criar objetos pesados sob demanda, economizando recursos ao evitar a criação de instâncias até que sejam realmente necessárias.
+### Código
+```java
+interface Imagem {
+    void exibir();
+}
+
+class ImagemReal implements Imagem {
+    private String nome;
+
+    public ImagemReal(String nome) {
+        this.nome = nome;
+        carregarImagem();
+    }
+
+    private void carregarImagem() {
+        System.out.println("Carregando a imagem: " + nome);
+    }
+
+
+    @Override
+    public void exibir() {
+        System.out.println("Exibindo a imagem: " + nome);
+    }
+}
+
+class ProxyImagem implements Imagem {
+    private ImagemReal imagemReal;
+    private String nome;
+
+    public ProxyImagem(String nome) {
+        this.nome = nome;
+    }
+
+
+    @Override
+    public void exibir() {
+        if (imagemReal == null) {
+            imagemReal = new ImagemReal(nome);
+        }
+        imagemReal.exibir();
+    }
+}
+
+public class ExemploProxyVirtual {
+    public static void main(String[] args) {
+        Imagem imagem = new ProxyImagem("foto.jpg");
+        imagem.exibir(); // Carrega e exibe a imagem
+        imagem.exibir(); // Apenas exibe a imagem, sem recarregar
+    }
+}
+```
+## 3. Proxy de Proteção
+Este Proxy é projetado para controlar o acesso a um objeto, garantindo que apenas usuários autorizados possam interagir com ele. É especialmente útil em sistemas que lidam com informações sensíveis.
+### Código
+```java
+public interface ContaBancaria {
+    void verSaldo();
+}
+
+public class ContaBancariaReal implements ContaBancaria{
+    private String titular;  
+    private double saldo;
+
+    public ContaBancariaReal(String titular, double saldo) {
+        this.titular = titular;
+        this.saldo = saldo;
+    }
+
+    @Override
+    public void verSaldo() {
+        System.out.printf("Exibindo saldo da conta de %s: R$ %.2f%n", titular, saldo);;
+    }
+}
+
+public class ProxySeguranca implements ContaBancaria{
+    private ContaBancaria contaReal;
+    private String papelUsuario;
+
+    public ProxySeguranca(String titular, double saldo, String papelUsuario) {
+        this.contaReal = new ContaBancariaReal(titular, saldo);
+        this.papelUsuario = papelUsuario;
+    }
+
+    @Override
+    public void verSaldo() {
+        if ("ADMIN".equals(papelUsuario)) {
+            contaReal.verSaldo();
+        }
+        else {
+            System.out.println("Acesso negado. Você não tem permissão.");
+        }
+    }
+}
+
+public class ExemploProxy {
+    public static void main(String[] args) {
+        ContaBancaria usuarioComum = new ProxySeguranca("Pedro", 700.00, "USUARIO");
+        usuarioComum.verSaldo();
+
+        ContaBancaria admin = new ProxySeguranca("Joana", 2000.00,"ADMIN");
+        admin.verSaldo();
+    }
+}
+
+```
+
+## 4. Smart Reference (Referência Inteligente)
+Este Proxy é utilizado para gerenciar referências a objetos, permitindo que ações adicionais sejam executadas ao acessar um objeto, como contar referências ou carregar objetos persistentes.
+### Código
+``` java
+class ObjetoPersistente {
+    public void carregar() {
+        System.out.println("Objeto persistente carregado.");
+    }
+}
+
+class SmartReference {
+    private ObjetoPersistente objeto;
+    private int contagemReferencias;
+
+    public void acessar() {
+        if (objeto == null) {
+            objeto = new ObjetoPersistente();
+            objeto.carregar();
+        }
+        contagemReferencias++;
+        System.out.println("Referência acessada. Total de referências: " + contagemReferencias);
+    }
+
+    public void liberar() {
+        contagemReferencias--;
+        if (contagemReferencias <= 0) {
+            objeto = null;
+            System.out.println("Objeto liberado da memória.");
+        }
+    }
+}
+public class ExemploSmartReference {
+    public static void main(String[] args) {
+        SmartReference referencia = new SmartReference();
+        referencia.acessar();
+        referencia.acessar();
+        referencia.liberar();
+        referencia.liberar();
     }
 }
 ```
 
-## Conclusão
-O padrão Proxy é útil para controlar o acesso a objetos reais, permitindo otimizações como carregamento sob demanda, caching, autenticação e restrição de acesso. No exemplo apresentado, o Proxy adia a criação de um arquivo até que ele seja realmente necessário, evitando desperdício de recursos.
+## Colaborações:
+- Dependendo de sua categoria, o Proxy retransmite pedidos ao RealSubject quando adequado.
+
+## Consequências:
+### Benefícios
+1. **Acesso Indireto:** O padrão Proxy permite que os desenvolvedores ocultem a complexidade do acesso a objetos. Isso facilita a interação com objetos que podem estar em locais diferentes, tornando o sistema mais intuitivo.
+
+2. **Otimização de Recursos:** Com proxies virtuais, é possível criar objetos apenas quando realmente necessários. Isso não só economiza memória, mas também melhora a eficiência do sistema, evitando a criação de objetos que podem nunca ser utilizados.
+
+3. **Controle de Acesso:** Proxies de proteção garante que apenas usuários autorizados possam acessar informações sensíveis. Isso é especialmente importante em sistemas onde a privacidade é fundamental.
+
+4. **Copy-on-Write:** Essa técnica permite que objetos grandes sejam copiados apenas quando necessário. Isso reduz o custo computacional, especialmente em situações onde as cópias não são frequentemente modificadas.
+
+### Desvantagens
+1. **Complexidade Adicional:** A introdução de proxies pode aumentar a complexidade do sistema. Embora isso possa ser benéfico em alguns casos, também pode dificultar a manutenção e a compreensão do código.
+   
+2. **Gerenciamento de Estado:** Proxies que gerenciam contagens de referências podem complicar o estado do sistema, especialmente em ambientes multithread, onde a concorrência pode levar a problemas inesperados.
+
+3. **Custo de Cópia:** Embora a técnica copy-on-write seja eficiente, se um objeto for frequentemente modificado, o custo de cópias repetidas pode se acumular, tornando essa abordagem menos vantajosa.
 
 ## Usos conhecidos:
-**Serviços remotos:** Representa objetos remotos em aplicações distribuídas.
+**- NEXTSTEP:** Utiliza proxies, conhecidos como NXProxy, como representantes locais de objetos distribuídos. Quando um cliente solicita um objeto remoto, o servidor cria um proxy que codifica e encaminha mensagens para o objeto remoto, retornando os resultados de forma semelhante.
 
-**Autenticação e segurança:** Restringe acesso a objetos sensíveis.
-Cache de imagens e arquivos: Evita carregamento repetitivo de recursos.
+**- Smalltalk:** McCullough discute a aplicação de proxies para acessar objetos remotos.
 
-**Controle de acesso a sistemas complexos:** Garante que apenas usuários autorizados interajam com determinados objetos.
+**- Encapsuladores:** Pascoe explora como "encapsulators" podem ser usados para controlar efeitos colaterais em chamadas de métodos e gerenciar o acesso a recursos.
 
 ## Padrões relacionados:
-**- Decorator:** Embora similar ao Proxy, o Decorator adiciona funcionalidades sem restringir acesso.
+**- Adapter:** Um adaptador oferece uma interface diferente para um objeto, enquanto um proxy mantém a mesma interface. Um proxy que controla o acesso pode recusar operações, fazendo com que sua interface seja um subconjunto da do objeto.
 
-**- Adapter:** Converte interfaces sem atuar como intermediário.
+**- Decorator:** Embora decoradores e proxies possam parecer semelhantes, eles têm funções diferentes. Decoradores adicionam novas funcionalidades a um objeto, enquanto proxies controlam o acesso a ele.
+
+## Conclusão
+O padrão Proxy é uma ferramenta que oferece flexibilidade e controle em sistemas de software. Ao permitir que um objeto atue como um substituto para outro, ele facilita o gerenciamento de acesso, otimiza o uso de recursos e promove um design modular. Com suas diversas aplicações, desde Proxies Remotos até Proxies de Proteção e Referências Inteligentes. 
 
 ## Referências
 GAMMA, Erich; HELM, Richard; JOHNSON, Ralph; VLISSIDES, John. Padrões de projeto: soluções reutilizáveis de software orientado a objetos. 1. ed. Porto Alegre: Bookman, 2000.
