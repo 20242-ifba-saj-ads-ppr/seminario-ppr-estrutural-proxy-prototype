@@ -246,9 +246,9 @@ public interface ContaBancaria {
     void verSaldo();
 }
 
-public class ContaBancariaReal implements ContaBancaria{
-    private String titular;  
-    private double saldo;
+public class ContaBancariaReal implements ContaBancaria {
+    private final String titular;
+    private final double saldo;
 
     public ContaBancariaReal(String titular, double saldo) {
         this.titular = titular;
@@ -257,31 +257,24 @@ public class ContaBancariaReal implements ContaBancaria{
 
     @Override
     public void verSaldo() {
-        System.out.printf("Exibindo saldo da conta de %s: R$ %.2f%n", titular, saldo);;
+        System.out.printf("Saldo da conta de %s: R$ %.2f%n", titular, saldo);
     }
 }
 
 public class ProxySeguranca implements ContaBancaria {
-    private ContaBancariaReal contaReal;
-    private String titular;
-    private double saldo;
-    private String papelUsuario;
+    private final ContaBancariaReal contaReal;
+    private final Usuario usuarioAtual;
 
-    public ProxySeguranca(String titular, double saldo, String papelUsuario) {
-        this.titular = titular;
-        this.saldo = saldo;
-        this.papelUsuario = papelUsuario;
+    public ProxySeguranca(String titular, double saldo, Usuario usuarioAtual) {
+        this.contaReal = new ContaBancariaReal(titular, saldo);
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Override
     public void verSaldo() {
-        if (!"ADMIN".equals(papelUsuario)) {
-            System.out.println("Acesso negado. Você não tem permissão.");
+        if (!usuarioAtual.getPapel().equalsIgnoreCase("ADMIN")) {
+            System.out.printf("Acesso negado para %s. Você não tem permissão para ver o saldo.%n", usuarioAtual.getNome());
             return;
-        }
-
-        if (contaReal == null) {
-            contaReal = new ContaBancariaReal(titular, saldo);
         }
 
         contaReal.verSaldo();
@@ -290,11 +283,14 @@ public class ProxySeguranca implements ContaBancaria {
 
 public class ExemploProxy {
     public static void main(String[] args) {
-        ContaBancaria usuarioComum = new ProxySeguranca("Pedro", 700.00, "USUARIO");
-        usuarioComum.verSaldo();
+        Usuario usuarioComum = new Usuario("Pedro", "USUARIO");
+        Usuario admin = new Usuario("Joana", "ADMIN");
 
-        ContaBancaria admin = new ProxySeguranca("Joana", 2000.00,"ADMIN");
-        admin.verSaldo();
+        ContaBancaria contaPedro = new ProxySeguranca("Pedro", 700.00, usuarioComum);
+        ContaBancaria contaJoana = new ProxySeguranca("Joana", 2000.00, admin);
+
+        contaPedro.verSaldo();  // Vai negar o acesso para Pedro
+        contaJoana.verSaldo();  // Vai exibir o saldo para Joana
     }
 }
 
@@ -304,58 +300,132 @@ public class ExemploProxy {
 Este Proxy é utilizado para gerenciar referências a objetos, permitindo que ações adicionais sejam executadas ao acessar um objeto, como contar referências ou carregar objetos persistentes.
 ### Código
 ``` java
-class ServidorNetflix {
-    private String localizacao;
 
-    public ServidorNetflix(String localizacao) {
+interface StreamingService {
+    void assistirFilme();
+    void sairDoFilme();
+}
+
+class ServidorNetflix implements StreamingService {
+    private String localizacao;
+    private int usuariosConectados;
+    private int capacidadeMaxima;
+
+    public ServidorNetflix(String localizacao, int capacidadeMaxima) {
         this.localizacao = localizacao;
+        this.capacidadeMaxima = capacidadeMaxima;
+        this.usuariosConectados = 0;
     }
 
-    public void conectar() {
-        System.out.println("Conectado ao servidor Netflix em " + localizacao);
+    public boolean estaCheio() {
+        return usuariosConectados >= capacidadeMaxima;
+    }
+
+    @Override
+    public void assistirFilme() {
+        if (!estaCheio()) {
+            usuariosConectados++;
+            System.out.println("Usuário assistindo no servidor de " + localizacao + ". Conectados: " + usuariosConectados);
+        } else {
+            System.out.println("Servidor de " + localizacao + " está cheio! Não é possível conectar mais usuários.");
+        }
+    }
+
+    @Override
+    public void sairDoFilme() {
+        if (usuariosConectados > 0) {
+            usuariosConectados--;
+            System.out.println("Usuário saiu do servidor de " + localizacao + ". Restam: " + usuariosConectados + " conectados.");
+        }
+    }
+
+    public String getLocalizacao() {
+        return localizacao;
+    }
+    
+    public int getUsuariosConectados() {
+        return usuariosConectados;
     }
 }
 
-class GerenciadorDeStreaming {
-    private ServidorNetflix servidor;
-    private int usuariosConectados;
-    private String localizacaoServidor;
+import java.util.ArrayList;
+import java.util.List;
 
-    public GerenciadorDeStreaming(String localizacaoServidor) {
-        this.localizacaoServidor = localizacaoServidor;
+class ProxyServidorNetflix implements StreamingService {
+    private List<ServidorNetflix> servidores;
+
+    public ProxyServidorNetflix() {
+        servidores = new ArrayList<>();
     }
 
+    public void adicionarServidor(ServidorNetflix servidor) {
+        servidores.add(servidor);
+    }
+
+    private ServidorNetflix encontrarServidorDisponivel() {
+        ServidorNetflix melhorServidor = null;
+    
+        for (ServidorNetflix servidor : servidores) {
+            if (!servidor.estaCheio()) {
+                if (melhorServidor == null || servidor.getUsuariosConectados() < melhorServidor.getUsuariosConectados()) {
+                    melhorServidor = servidor;
+                }
+            }
+        }
+    
+        return melhorServidor;
+    }    
+
+    @Override
     public void assistirFilme() {
-        if (servidor == null) {
-            servidor = new ServidorNetflix(localizacaoServidor);
-            servidor.conectar();
+        ServidorNetflix servidor = encontrarServidorDisponivel();
+        if (servidor != null) {
+            servidor.assistirFilme();
+        } else {
+            System.out.println("Todos os servidores estão cheios no momento. Tente novamente mais tarde.");
         }
-        usuariosConectados++;
-        System.out.println("Usuário assistindo. Total de usuários conectados: " + usuariosConectados);
     }
 
+    @Override
     public void sairDoFilme() {
-        usuariosConectados--;
-        System.out.println("Usuário saiu. Restam " + usuariosConectados + " usuários conectados.");
-        if (usuariosConectados <= 0) {
-            servidor = null;
-            System.out.println("Nenhum usuário assistindo. Servidor liberado.");
+        for (ServidorNetflix servidor : servidores) {
+            if (servidor.getUsuariosConectados() > 0) {
+                servidor.sairDoFilme();
+                return;
+            }
         }
+    
+        System.out.println("Nenhum usuário conectado em nenhum servidor.");
     }
 }
 
 public class NetflixSimulacao {
     public static void main(String[] args) {
-        GerenciadorDeStreaming gerenciador = new GerenciadorDeStreaming("São Paulo");
+        ProxyServidorNetflix proxy = new ProxyServidorNetflix();
 
-        gerenciador.assistirFilme(); 
-        gerenciador.assistirFilme(); 
+        ServidorNetflix servidorSP = new ServidorNetflix("São Paulo", 2);
+        ServidorNetflix servidorRJ = new ServidorNetflix("Rio de Janeiro", 3);
+        ServidorNetflix servidorNY = new ServidorNetflix("Nova York", 1);
 
-        gerenciador.sairDoFilme(); 
-        gerenciador.sairDoFilme(); 
+        proxy.adicionarServidor(servidorSP);
+        proxy.adicionarServidor(servidorRJ);
+        proxy.adicionarServidor(servidorNY);
+
+        proxy.assistirFilme(); // SP
+        proxy.assistirFilme(); // RJ
+        proxy.assistirFilme(); // NY
+        proxy.assistirFilme(); // SP
+        proxy.assistirFilme(); // RJ
+        proxy.assistirFilme(); // RJ
+        proxy.assistirFilme(); // Todos cheios
+
+        proxy.sairDoFilme();
+        proxy.sairDoFilme();
+        proxy.sairDoFilme();
+
+        proxy.assistirFilme(); //Escolhe o menos cheio
     }
 }
-
 ```
 
 ## Colaborações:
