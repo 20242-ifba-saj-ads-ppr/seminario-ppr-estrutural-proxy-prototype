@@ -1,6 +1,6 @@
-public class ContaBancariaReal implements ContaBancaria{
-    private String titular;  
-    private double saldo;
+public class ContaBancariaReal implements ContaBancaria {
+    private final String titular;
+    private final double saldo;
 
     public ContaBancariaReal(String titular, double saldo) {
         this.titular = titular;
@@ -9,6 +9,6 @@ public class ContaBancariaReal implements ContaBancaria{
 
     @Override
     public void verSaldo() {
-        System.out.printf("Exibindo saldo da conta de %s: R$ %.2f%n", titular, saldo);;
+        System.out.printf("Saldo da conta de %s: R$ %.2f%n", titular, saldo);
     }
 }

@@ -1,19 +1,19 @@
-public class ProxySeguranca implements ContaBancaria{
-    private ContaBancaria contaReal;
-    private String papelUsuario;
+public class ProxySeguranca implements ContaBancaria {
+    private final ContaBancariaReal contaReal;
+    private final Usuario usuarioAtual;
 
-    public ProxySeguranca(String titular, double saldo, String papelUsuario) {
+    public ProxySeguranca(String titular, double saldo, Usuario usuarioAtual) {
         this.contaReal = new ContaBancariaReal(titular, saldo);
-        this.papelUsuario = papelUsuario;
+        this.usuarioAtual = usuarioAtual;
     }
 
     @Override
     public void verSaldo() {
-        if ("ADMIN".equals(papelUsuario)) {
-            contaReal.verSaldo();
-        } 
-        else {
-            System.out.println("Acesso negado. Você não tem permissão.");
+        if (!usuarioAtual.getPapel().equalsIgnoreCase("ADMIN")) {
+            System.out.printf("Acesso negado para %s. Você não tem permissão para ver o saldo.%n", usuarioAtual.getNome());
+            return;
         }
+
+        contaReal.verSaldo();
     }
 }
