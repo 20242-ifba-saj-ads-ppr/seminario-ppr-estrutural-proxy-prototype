@@ -426,6 +426,7 @@ public class NetflixSimulacao {
         proxy.assistirFilme(); //Escolhe o menos cheio
     }
 }
+
 ```
 
 ## Colaborações:
